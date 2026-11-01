@@ -58,8 +58,24 @@ This checklist is executed once per instance, on OSC and on IONOS, against the r
 | 17 | | | | |
 | 18 | | | | |
 
-Tested release: commit `__________`, deployer node version `______`, tgz SHA-256 `____________________`
+### Run record
 
-OSC tested by: ____________ on ____________ IONOS tested by: ____________ on ____________
+| Field | OSC (`ocm-osc.facis.cloud`) | IONOS (`ocm-ionos.facis.cloud`) |
+| --- | --- | --- |
+| Tested commit (branch or tag) | | |
+| `orce-esb-ocmwstack-12.6.4.tgz` SHA-256 installed in the deployer | | |
+| Deployer ORCE version | | |
+| Kubernetes version / node pool | | |
+| `validate` result (date) | | |
+| BDD `core` (summary.json: passed/total) | | |
+| BDD `credential` | | |
+| BDD `clearing` | | |
+| BDD `refresh` | not run: no configurable refresh endpoint in this release | not run: no configurable refresh endpoint in this release |
+| Accessibility ([ACCESSIBILITY.md](ACCESSIBILITY.md)) | | |
+| Evidence location (outside the repository) | | |
+| Tester / date | | |
+
+### Results per step
+
 
 Note: announced maintenance windows of a provider affect the single-replica pods; schedule the run outside them.

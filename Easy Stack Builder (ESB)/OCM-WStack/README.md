@@ -564,8 +564,8 @@ Version strings that do not follow 12.6.4: the `charts-gateway` and `charts-dash
 
 **By design, not limitations:** revocation is available only for credentials issued by the own tenant, because only the issuer holds the status list; other credentials report `CREDENTIAL_NOT_REVOCABLE`. Each instance accepts offers and invitations only from its own tenant host (item 4 below).
 
-1. **Well-Known service database error (nullable timestamps)**: an open upstream issue in the Well-Known service. It affects the registration of issuer metadata on new tenants. Symptoms can include a failing `issuer-metadata` check in `validate` and issuer-tenant errors in the UI. Upstream reference: ____.
-2. **Status List issues**: open upstream issues concern status URLs, unsigned responses, missing format headers, compression and the NATS status check. They limit revocation, the display of revocation status and status-aware verification. The UI shows "Status not checked" or "not revocable" instead of a status it cannot confirm. Verification reports status as not checked or not separately reported. Upstream references: ____.
+1. **Well-Known service database error (nullable timestamps)**: an open upstream issue in the Well-Known service. It affects the registration of issuer metadata on new tenants. Symptoms can include a failing `issuer-metadata` check in `validate` and issuer-tenant errors in the UI. Reported upstream in the issue tracker of [eclipse-xfsc/oid4-vci-vp-well-known-service](https://github.com/eclipse-xfsc/oid4-vci-vp-well-known-service/issues).
+2. **Status List issues**: open upstream issues concern status URLs, unsigned responses, missing format headers, compression and the NATS status check. They limit revocation, the display of revocation status and status-aware verification. The UI shows "Status not checked" or "not revocable" instead of a status it cannot confirm. Verification reports status as not checked or not separately reported. Reported upstream in the issue tracker of [eclipse-xfsc/statuslist-service](https://github.com/eclipse-xfsc/statuslist-service/issues).
 3. **`jwt_vc_json` verification is not supported**. The verify adapter accepts only `ldp_vc` and `dc+sd-jwt` and returns `unsupported` / `UNSUPPORTED_FORMAT` for other formats. Retrieval currently rejects JSON credentials such as DeveloperCredential (`RETRIEVAL_CREDENTIAL_FORMAT_UNSUPPORTED`). The pinned Retrieval image `1.1.7-alpha` (built 8 October 2026) predates the upstream fix for JSON/LDP credentials (eclipse-xfsc/oid4-vci-credential-retrieval-service pull request #14, merged 11 October, contained in tag `v1.1.7`). Upgrading the pin is a follow-up that must be tested on a sandbox first.
 4. **Offers and relationships are accepted only from the own tenant host** (zero-trust default). `offerIssuerHosts` and `relationshipHosts` contain only the tenant host (`deployment/templates/runtime-config.json`); an allow-list for other hosts is not configurable in this release. Each instance (OSC, IONOS) is therefore independent, and offers or invitations from another instance are rejected (`OFFER_ISSUER_NOT_ALLOWED`, `RELATIONSHIP_HOST_NOT_ALLOWED`).
 5. **Clearing Center uses the Gaia-X lab endpoint** `https://compliance-dispatcher.lab.gaia-x.eu/v3`. It is a fixed default and cannot be set through the deployer. It needs three existing signed Gaia-X input credentials (`gx:LegalPerson`, `gx:VatID`, `gx:Issuer`). Lab availability and its metadata affect results.
@@ -600,18 +600,4 @@ Source layout: `ocmwstack.js` / `ocmwstack.html` (node runtime and editor), `dep
 
 ## Test evidence
 
-Evidence is produced according to [docs/ACCEPTANCE-TEST-CHECKLIST.md](docs/ACCEPTANCE-TEST-CHECKLIST.md) and stored **outside this repository**. Fill in the placeholders when the evidence exists. This README makes no claim about test results.
-
-| Field | OSC (`ocm-osc.facis.cloud`) | IONOS (`ocm-ionos.facis.cloud`) |
-| --- | --- | --- |
-| Evidence location | ____ | ____ |
-| Release commit / tag | ____ | ____ |
-| `orce-esb-ocmwstack-12.6.4.tgz` SHA-256 | ____ | ____ |
-| Deployer ORCE version | ____ | ____ |
-| Kubernetes version / node pool | ____ | ____ |
-| `validate` result (date) | ____ | ____ |
-| BDD `core` (summary.json) | ____ | ____ |
-| BDD `credential` | ____ | ____ |
-| BDD `clearing` | ____ | ____ |
-| Accessibility results ([docs/ACCESSIBILITY.md](docs/ACCESSIBILITY.md)) | ____ | ____ |
-| Tester / date | ____ | ____ |
+The acceptance run on OSC and on IONOS follows [docs/ACCEPTANCE-TEST-CHECKLIST.md](docs/ACCEPTANCE-TEST-CHECKLIST.md). Its results, with the tested commit, the archive checksum, the versions, the BDD summaries and the testers, are recorded in the run record and the results table of that document. Evidence files are stored **outside this repository**. This README makes no claim about test results.
