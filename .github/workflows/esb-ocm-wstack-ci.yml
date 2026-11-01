@@ -57,9 +57,12 @@ jobs:
       - uses: azure/setup-helm@v4
       - name: Lint and render the charts
         run: |
+          # charts-runtime requires the values the deployer always sets (values.schema.json)
           for chart in charts-runtime charts-gateway charts-dashboards; do
-            helm lint "$MODULE/$chart"
-            helm template ci "$MODULE/$chart" > /dev/null
+            args=()
+            if [ "$chart" = charts-runtime ]; then args=(--set host=ci.example.invalid); fi
+            helm lint "$MODULE/$chart" "${args[@]}"
+            helm template ci "$MODULE/$chart" "${args[@]}" > /dev/null
           done
 
   bdd-bindings:
@@ -85,7 +88,7 @@ jobs:
       - name: Scan the current module files
         run: |
           docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.18.4 \
-            detect --no-git --no-banner --redact --source "/repo/$MODULE"
+            detect --no-git --no-banner --redact --config /repo/.github/gitleaks.toml --source "/repo/$MODULE"
 
   licence-check:
     name: Eclipse Dash licence check
@@ -98,7 +101,7 @@ jobs:
           java-version: "17"
       - name: Check the runtime dependencies
         run: |
-          curl -fsSL -o dash.jar "https://repo.eclipse.org/service/local/artifact/maven/redirect?r=dash-licenses&g=org.eclipse.dash&a=org.eclipse.dash.licenses&v=LATEST"
+          curl -fsSL -o dash.jar "https://repo.eclipse.org/content/repositories/dash-licenses-releases/org/eclipse/dash/org.eclipse.dash.licenses/1.1.0/org.eclipse.dash.licenses-1.1.0.jar"
           # Keep this list in line with the dependencies in package.json and charts-runtime/files/seed.sh.
           printf '%s\n' \
             "npm/npmjs/-/bcryptjs/2.4.3" \
