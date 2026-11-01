@@ -33,7 +33,7 @@ This checklist is executed once per instance, on OSC and on IONOS, against the r
 | 15 | Accessibility | Keyboard-only run through login, list, detail and dialogs; axe or Lighthouse in Chrome, Firefox, Safari and Edge | Results entered in `docs/ACCESSIBILITY.md` |
 | 16 | Resilience | Restart the ORCE pod and the MongoDB pod; interrupt the NATS connection | Service recovers without data loss; `ready` reports `degraded: true` while NATS is down |
 | 17 | Security exposure | Check that `/orce/editor/` is not reachable from the internet; check the response headers of `/orce/` | Editor not public; headers recorded |
-| 18 | Test offering endpoint | `curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{}' https://<host>/test/offering/create` | 401, 403 or 404. A 400 with `identifier is required` means the upstream offering test tool accepts anonymous requests and must be restricted at the gateway before the handover |
+| 18 | Test offering endpoint | `curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{}' https://<host>/test/offering/create` | 404 (the deployer does not render this route). A 400 with `identifier is required` means a route rendered by an older deployer version is still present and must be removed |
 
 ## Results
 

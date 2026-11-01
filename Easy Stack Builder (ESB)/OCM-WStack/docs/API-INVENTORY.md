@@ -277,7 +277,7 @@ The "Pinned chart" column names the chart directory in `eclipse-xfsc/deployment`
 | **Pre-Authorization Bridge** | not called by the runtime | `OCM W-Stack/Pre Authorization Bridge Chart` | none | Injection `nats,redis,signer`. The guard `esb-ocm-guard` checks its Redis authentication and NATS listener. |
 | **Policy** | not called by the runtime | `OCM W-Stack/Policy Chart` | none | Image overridden to `node-654e3bca7fbeeed18f81d7c7.ps-xaas.io/tsa/policy:1.1.2`. Policies repository `https://github.com/eclipse-xfsc/rego-policies.git` (folder `Policies`). Addresses: universal resolver, Signer, `{publicOrigin}`. |
 | **SD-JWT Service** | not called by the runtime | `OCM W-Stack/SdJwt Service` | none | Native dependency. |
-| **Offering Dummy** | not called by the runtime | `OCM W-Stack/Offering Dummy` | Deployer only: `POST {publicOrigin}/test/offering/create` (`checks.sh › test_credentials`) | Test offer for the explicit `test-credentials` action. *(inference: served by Offering Dummy through tenant routes.)* |
+| **Offering Dummy** | not called by the runtime | `OCM W-Stack/Offering Dummy` | Deployer only, through a localhost port-forward to `service/offering-dummy-credential-offering-bootstrap:8080`: `POST /api/offering/create` (`checks.sh › test_credentials`). The deployer does not render a public route for this service. | Test offer for the explicit `test-credentials` action. |
 | **Universal resolver** | `http://universal-resolver-service.infrastructure.svc.cluster.local:8080` | from the `INFRA/core` ApplicationSet | none by the runtime; the deployer checks port 8080 (`resolver_preflight`) | DID resolution for Policy, Verification and DIDComm |
 
 ### 2.3 NATS
@@ -308,7 +308,7 @@ From `deployment/checks.sh`. These calls are made from the deployer host over th
 | UI auth mode | `GET {publicOrigin}/orce/ui-api/v1/auth/config` | `mode: local-session`, `sessionHours: 24`, `features.pcm: false` |
 | Anonymous denial | `POST …/issuance`, `PATCH …/preferences`, `DELETE …/credentials/esb-auth-probe` | `401 AUTHENTICATION_REQUIRED` |
 | Dashboards (only if `publicDashboards`) | `GET https://argocd.<domain>/api/version`, `GET https://grafana.<domain>/api/health` | version string; `database: ok` |
-| `test-credentials` (explicit confirmation) | port-forward to Storage and Retrieval: Storage list → `POST {publicOrigin}/test/offering/create` → Retrieval `PUT …/offering/retrieve/esb-check-<uuid>` → `GET …/offering/list/…` → `DELETE …/offering/clear/…` → Storage read-back (up to 90 s) | test data is retained |
+| `test-credentials` (explicit confirmation) | port-forward to Storage, Retrieval and the offering bootstrap tool: Storage list → `POST http://127.0.0.1:<port>/api/offering/create` → Retrieval `PUT …/offering/retrieve/esb-check-<uuid>` → `GET …/offering/list/…` → `DELETE …/offering/clear/…` → Storage read-back (up to 90 s) | test data is retained |
 
 ### 2.5 Version pins (from `upstream-lock.json` and the charts)
 

@@ -129,7 +129,7 @@ C1 in section 4 (health connection of H5 to H7 and of the native services that O
 
 - **Function:** `POST /api/createOffering` and `POST /api/offering/create` take an XFSC `IssuanceRequest`, send it as CloudEvent `issuance.request` to NATS `issuer.dummycontentsigner.request` (10 s timeout) and return the `IssuanceReply` with the offer. Health: `GET /health`, `GET /isalive`.
 - **Size:** about 5 KB of Go (handler and NATS client), 3 KB of tests.
-- **Interfaces:** HTTP 8080. Publicly routed by the tenant chart as `POST https://<tenant>/test/offering/create`. Outbound NATS.
+- **Interfaces:** HTTP 8080. The upstream tenant values route it publicly as `POST https://<tenant>/test/offering/create`; the ESB deployer leaves that route out of the rendered tenant values since 12.6.4 (`tenant_values` in `deployment/assets.sh`), and `test-credentials` reaches the service through a localhost port-forward. Outbound NATS.
 - **State:** none.
 - **Security relevance:** high. The route has no authentication in the ESB charts. A missing `tenant_id` falls back to a default tenant. Anyone who can reach the tenant host can create offers for the demo credential types with free claim values. The resulting credentials are signed with the tenant issuer key (`did:web:<tenant host>`). No Envoy SecurityPolicy or other protection was found in this module. **[unverified]** whether an upstream gateway policy protects the route. If it is confirmed, this is a security finding on its own, independent of CR01. The image tag `dev` is mutable.
 - **Can ORCE replace it: Yes.** ORCE already implements the identical NATS call in `events.issue()`, behind login, CSRF protection, the permission `credentials.issue`, claim validation and audit. The only remaining user of S13 in this module is the Deployer action `test-credentials` (`deployment/checks.sh`).
@@ -322,7 +322,7 @@ Dependencies between the items:
 
 ## 6. Open points
 
-1. Whether `/test/offering/create` is reachable without authentication on the live tenant hosts (3.2).
+1. ~~Whether `/test/offering/create` is reachable without authentication on the live tenant hosts (3.2).~~ Confirmed on 1 November 2026 (anonymous `POST {}` answered `400 identifier is required` on both instances); the route is no longer rendered by the deployer, and the rule was removed by hand on both instances.
 2. NATS authorization: whether subject-level permissions exist for the plugin, status and well-known subjects (3.4).
 3. Other consumers of PostgreSQL and Redis besides S9 and S8 (3.5, 3.6).
 4. Which native service calls the SD-JWT service (3.7).
