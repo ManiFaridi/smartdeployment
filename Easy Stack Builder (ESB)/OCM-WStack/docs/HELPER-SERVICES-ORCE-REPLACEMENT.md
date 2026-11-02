@@ -129,12 +129,12 @@ C1 in section 4 (health connection of H5 to H7 and of the native services that O
 
 - **Function:** `POST /api/createOffering` and `POST /api/offering/create` take an XFSC `IssuanceRequest`, send it as CloudEvent `issuance.request` to NATS `issuer.dummycontentsigner.request` (10 s timeout) and return the `IssuanceReply` with the offer. Health: `GET /health`, `GET /isalive`.
 - **Size:** about 5 KB of Go (handler and NATS client), 3 KB of tests.
-- **Interfaces:** HTTP 8080. The upstream tenant values route it publicly as `POST https://<tenant>/test/offering/create`; the ESB deployer leaves that route out of the rendered tenant values since 12.6.4 (`tenant_values` in `deployment/assets.sh`), and `test-credentials` reaches the service through a localhost port-forward. Outbound NATS.
+- **Interfaces:** HTTP 8080. The upstream tenant values declare a public route `POST https://<tenant>/test/offering/create` under `routes:`; ESB releases before 12.6.4 rendered it through the mapping `$defaults.routes // $defaults.ocm_issuer` in `tenant_values`. Since 12.6.4 the deployer leaves that route out of the rendered tenant values (`deployment/assets.sh`), and `test-credentials` reaches the service through a localhost port-forward. Outbound NATS.
 - **State:** none.
-- **Security relevance:** high. The route has no authentication in the ESB charts. A missing `tenant_id` falls back to a default tenant. Anyone who can reach the tenant host can create offers for the demo credential types with free claim values. The resulting credentials are signed with the tenant issuer key (`did:web:<tenant host>`). No Envoy SecurityPolicy or other protection was found in this module. **[unverified]** whether an upstream gateway policy protects the route. If it is confirmed, this is a security finding on its own, independent of CR01. The image tag `dev` is mutable.
+- **Security relevance:** high in releases before 12.6.4. The route had no authentication in the ESB charts, a missing `tenant_id` fell back to a default tenant, and anyone who could reach the tenant host could create offers for the demo credential types with free claim values, signed with the tenant issuer key (`did:web:<tenant host>`). This was confirmed on both FACIS instances on 1 November 2026 and the route was removed there by hand; 12.6.4 no longer renders it. The image tag `dev` is mutable.
 - **Can ORCE replace it: Yes.** ORCE already implements the identical NATS call in `events.issue()`, behind login, CSRF protection, the permission `credentials.issue`, claim validation and audit. The only remaining user of S13 in this module is the Deployer action `test-credentials` (`deployment/checks.sh`).
 - **ORCE flows needed:** no new user-facing flow. A loopback-only diagnostic endpoint for `test-credentials`, following the existing `/_ocm/storage-diagnostics` pattern (reachable only through a port-forward), or a switch of `test-credentials` to the authenticated API.
-- **Deployment changes:** add `OCM W-Stack/Offering Dummy` to `ocmExcludes`; remove the `offering-create` route in `tenant_values`; change `test_credentials`; clean up the Argo CD application on upgrade.
+- **Deployment changes:** add `OCM W-Stack/Offering Dummy` to `ocmExcludes`; switch `test_credentials` from the port-forward to ORCE; clean up the Argo CD application on upgrade. The removal of the public route and the port-forward for `test_credentials` are already part of 12.6.4.
 - **Dependencies:** NATS; S12 (or H3).
 - **Risks:** external users or scripts may rely on `/test/offering/create` (eco to confirm); Argo CD prune behaviour for the removed application. **[unverified]**
 
@@ -208,7 +208,7 @@ All figures are the contractor's estimates in person days (PD), based on code in
 
 ### 4.1 Assumptions
 
-1. Baseline: this module at commit `e5c7b44` (12.6.3) and the upstream versions pinned in `upstream-lock.json`. Upstream changes after 31 October 2026 can change the effort.
+1. Baseline: this module at release 12.6.4 (the follow-up pull request to `e5c7b44`) and the upstream versions pinned in `upstream-lock.json`. Upstream changes after 31 October 2026 can change the effort.
 2. Implementation in the existing application ORCE, as libraries in the `OCM initialization` tab plus new flow tabs. No new ORCE instance, no new image, no compiled code.
 3. Like-for-like parity with the pinned upstream services. For H3 these are the two demo configurations `DeveloperCredential` and `SDJWTCredential`. Issuing the ORCE-defined business types is an option and is not estimated.
 4. The native core services (S1 to S7) stay unchanged. No upstream pull requests are needed. Message contracts are taken from the pinned libraries.
@@ -226,7 +226,7 @@ All figures are the contractor's estimates in person days (PD), based on code in
 | H1 | Offering Dummy → existing ORCE issuance; `test-credentials` via loopback endpoint | 0.5 | 1.0 | 1.0 | 0.5 | 0.5 | 1.0 | 4.5 | 5.4 |
 | H2 | Tenant registration → ORCE `issuer-bootstrap` | 0.5 | 1.0 | 1.0 | 0.5 | 0.5 | 1.0 | 4.5 | 5.4 |
 | C1 | Connect H5 to H7 and the native services not probed yet (S1, S3, S4, S5) to ORCE readiness | 0.25 | 1.0 | 0.5 | 0.25 | 0.25 | 0.25 | 2.5 | 3.0 |
-| – | Wave 1 integration: fresh install, upgrade from 12.6.3, full BDD run | – | – | – | – | – | – | 1.5 | 1.8 |
+| – | Wave 1 integration: fresh install, upgrade from 12.6.4, full BDD run | – | – | – | – | – | – | 1.5 | 1.8 |
 | | **Wave 1** | | | | | | | **13.0** | **15.6** |
 | C0 | NATS request/reply foundation (CloudEvent checks, size limits, timeouts, queue group, reconnect, error codes, feature switch, BDD NATS steps) | 0.5 | 1.5 | 1.0 | 0.5 | 0.5 | 0.5 | 4.5 | 5.85 |
 | H3 | Dummy Content Signer → ORCE issuer plugin | 2.0 | 5.0 | 3.0 | 1.5 | 1.0 | 1.5 | 14.0 | 18.2 |
@@ -246,7 +246,7 @@ Breakdown of the H4 implementation (4.0 PD): registration subscriber with persis
 The H3 analysis (2.0 PD) includes a protocol spike of about 1 PD. If the spike shows that the contracts cannot be met without upstream changes, wave 2 stops after the spike. The cost is then about 1.5 PD (spike and write-up).
 
 New BDD scenarios (in addition to the existing 20):
-- H1: issuance through ORCE returns an offer; `/test/offering/create` is no longer routed.
+- H1: issuance through ORCE returns an offer; `/test/offering/create` stays unrouted (already the case in 12.6.4).
 - H2: re-registration after an S12 restart; conflict handling.
 - C1: dependency list in `/health/dependencies`.
 - H3: offer, retrieval, acceptance and storage readback for `ldp_vc` and `dc+sd-jwt`; reuse of a code is rejected; behaviour after an ORCE restart.
@@ -279,10 +279,10 @@ Dependencies between the items:
 
 1. **Wave 1: H1, H2, C1 (15.6 PD).** Low risk. It uses code that already exists in ORCE. It removes:
    - one Deployment, which uses the mutable `dev` image;
-   - one public route without authentication;
+   - the internal offering bootstrap service (its public route was already removed in 12.6.4);
    - one CronJob with 96 runs per day, plus its hook Job and the `curl` image.
 
-   It also adds the missing dependencies to the readiness view. Start with H1, because of the open security question in 3.2.
+   It also adds the missing dependencies to the readiness view. Start with H1; its security question (3.2) was answered, and the public route was removed in 12.6.4.
 2. **Gate:** the H3 protocol spike. Go or no-go together with eco.
 3. **Wave 2: C0 and H3 (26.0 PD).** Recommended if eco wants:
    - the dummy content signer and its in-memory fragility removed;
@@ -296,14 +296,14 @@ Dependencies between the items:
 
 | After | Removed | Changed |
 |---|---|---|
-| Wave 1 | Offering Dummy Deployment; tenant registration Job and CronJob; public `POST /test/offering/create`; images `credential-offering-bootstrap:dev` and `curlimages/curl:8.16.0` | `test-credentials` uses an ORCE loopback endpoint; ORCE registers the issuer tenant |
+| Wave 1 | Offering Dummy Deployment; tenant registration Job and CronJob; images `credential-offering-bootstrap:dev` and `curlimages/curl:8.16.0` | `test-credentials` uses an ORCE loopback endpoint; ORCE registers the issuer tenant |
 | Wave 2 | `dummycontentsigner` Deployment and image | `/api/schema` routed to ORCE; ORCE answers the plugin NATS subjects |
 | Wave 3 | `well-known-service` Deployment and image; guard branch for S9; possibly the PostgreSQL claim **[unverified]** | Issuer metadata endpoint routed to ORCE |
 
 ### 5.3 Decisions needed from eco
 
 - Approval of the waves, and of the gate after the spike.
-- Whether `/test/offering/create` may be removed.
+- Whether eco or other users relied on `/test/offering/create`, which 12.6.4 no longer routes.
 - Whether the plugin flows may run in the internet-facing application ORCE (assumed), or need a separate internal ORCE instance (more isolation, one extra workload, about +3 PD).
 - Whether the two demo credential types must stay available after H3.
 

@@ -287,7 +287,7 @@ T-Systems Open Sovereign Cloud has **no provider-specific logic** in this module
 | `instanceName` | string | `ocm-wstack` | no | CLI only | 2–40 characters `[a-z0-9-]`. Part of the ownership marker. |
 | `domainAddress` (alias `domain`) | string | – | **yes** | Base domain | Bare public DNS name with at least one dot. A leading `*.` is removed; the value is lowercased. |
 | `emailAddress` (alias `email`) | string | `""` | no | CLI only | Valid e-mail or empty. Passed to the upstream network charts; default for `uiAdminEmail`. |
-| `tenantId` | string | `demo-tenant` | yes | Tenant name | `^[a-z][a-z0-9_-]{0,39}$`. Native tenant ID and default subdomain. |
+| `tenantId` | string | `demo-tenant` | in the editor | Tenant name | `^[a-z][a-z0-9_-]{0,39}$`. Native tenant ID and default subdomain. |
 | `tenantRelease` | string | `demotenant` | no | CLI only | DNS label, max 35 characters. Tenant Helm release, TLS Secret `esb-<release>-tls`, ListenerSet name, teardown confirmation. |
 | `tenantSubdomain` | string | `tenantId` (lowercase, `_`→`-`) | no | CLI only | Single DNS label. Tenant host = `<tenantSubdomain>.<domain>`. |
 | `provider` | enum | `auto` | no | Cluster provider | `auto`, `generic`, `hetzner`, `ionos`, `aws`, `azure`, `gcp`, `openstack`, `digitalocean`, `oci`, `scaleway`, `alibaba`. |
@@ -333,7 +333,7 @@ Credentials are separate from the configuration: `kubeconfig`, `tlsCertificate`,
 
 **First login and password change**
 
-- Sign in at `https://<tenant>/orce/` with the UI administrator username (lowercased) and the initial password. The UI then requires a new password: every API route except `/auth/me` returns `PASSWORD_CHANGE_REQUIRED` until it is changed.
+- Sign in at `https://<tenant>/orce/` with the UI administrator username (lowercased) and the initial password. The UI then requires a new password: every API route except `/auth/me`, `/auth/password`, `/auth/csrf`, `/auth/logout` and the health routes returns `PASSWORD_CHANGE_REQUIRED` until it is changed.
 - Password policy: at least 12 characters, at most 72 UTF-8 bytes, no control characters.
 - Login limits per 15-minute window: 10 attempts per account and 50 per connection peer address (`LOGIN_RATE_LIMITED`). Behind the gateway the peer address may be the gateway pod, so the per-address limit can apply to all users together; verify this on a live system.
 - The session cookie is `Secure; HttpOnly; SameSite=Strict`, path `/orce/`, with a 24-hour absolute lifetime.
@@ -414,6 +414,8 @@ The acceptance procedure per instance is in [docs/ACCEPTANCE-TEST-CHECKLIST.md](
 Other useful actions: `inspect` (cluster report with applications, pods, PVCs, gateway, DNS instructions), `diagnose-storage`, and `test-credentials` with `msg.confirm = "CREATE TEST CREDENTIAL"`. `test-credentials` issues an SD-JWT test credential, accepts it through Retrieval and reads it back from Storage. **Its test data is kept.**
 
 **BDD acceptance tests** (`test/bdd/`, Behave 1.3.3 with pinned dependencies). Run them from a workstation against the **application ORCE tenant origin**:
+
+Run these commands in the module directory, `Easy Stack Builder (ESB)/OCM-WStack`:
 
 ```bash
 python3 -m venv .venv && . .venv/bin/activate
@@ -546,7 +548,7 @@ The UI shows the code with the HTTP status and a request ID; look the request up
 
 | Item | Value |
 | --- | --- |
-| Module / npm package `orce-esb-ocmwstack` | **12.6.4** (also chart `ocm-orce-runtime` 12.6.4 and marker `packageVersion`) |
+| Module / npm package `orce-esb-ocmwstack` | **12.6.4** (also chart `ocm-orce-runtime` 12.6.4; the marker `packageVersion` is written only on the first installation, so upgraded clusters keep their earlier value) |
 | Release archive | `orce-esb-ocmwstack-12.6.4.tgz`; **its SHA-256 is published with each release tag** |
 | Deployer engines | Node.js ≥ 18.17.0, Node-RED ≥ 3.0.0; dependency `bcryptjs` 2.4.3 |
 | Runtime npm dependencies (installed by the init container on the first start of each release) | `bcryptjs` 2.4.3, `mongodb` 6.13.0, `nats` 2.29.2, `node-red-contrib-uibuilder` 7.5.0, `vue` 3.5.13, `qrcode` 1.5.4 |
@@ -579,12 +581,12 @@ Version strings that do not follow 12.6.4: the `charts-gateway` and `charts-dash
 ## Security notes
 
 - **Do not expose `/orce/editor/` publicly.** The runtime HTTPRoute matches the prefix `/orce` (`charts-runtime/templates/runtime.yaml`). The Node-RED editor is therefore reachable on the internet and protected only by the editor password. **Recommendation**: restrict it, for example with a gateway rule or IP allow-list for `/orce/editor`, or a separate route. Until then, use strong unique editor credentials and, where possible, open it only through `kubectl -n ocm-wstack port-forward svc/ocm-orce 1880:80` (`http://127.0.0.1:1880/orce/editor/`).
-- **HSTS and CSP.** For UI and API responses, the runtime sets `Content-Security-Policy` (`default-src 'self'`, `frame-ancestors 'none'`, …), `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer` and `Permissions-Policy` (`charts-runtime/templates/config.yaml`). It sets **no `Strict-Transport-Security`**. **Recommendation**: add HSTS (for example `max-age=31536000; includeSubDomains` after checking every subdomain) at Envoy or in the middleware. Also review CSP for the editor, which does not receive these headers.
+- **HSTS and CSP.** For API responses (`/orce/ui-api/v1`), the runtime sets `Content-Security-Policy` (`default-src 'self'`, `frame-ancestors 'none'`, …), `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer` and `Permissions-Policy` (`charts-runtime/templates/config.yaml`). The UI page `/orce/` and its static files carry only `X-Content-Type-Options`. It sets **no `Strict-Transport-Security`**. **Recommendation**: add HSTS (for example `max-age=31536000; includeSubDomains` after checking every subdomain) at Envoy or in the middleware. Also add these headers to the UI page and review CSP for the editor; neither receives them.
 - Keep **Public dashboards** off unless they are needed. When on, Argo CD runs with `server.insecure=true` behind the TLS-terminating gateway, and the dashboards are internet-facing with admin accounts.
-- The upstream offering bootstrap tool (`POST /api/offering/create`, no caller authentication) is **not** exposed through the tenant HTTPRoute by this deployer version: `deployment/assets.sh` leaves the route `offering-create` out of the rendered tenant values. The service stays internal and keeps its health probes. The deployer action `test-credentials` reaches it through a localhost port-forward with the operator's kubeconfig (it needs `create` on `pods/portforward` and `get` on `services` and `pods` in the `ocm-wstack` namespace). Installations deployed with an earlier version keep the rendered rule until the tenant chart is re-rendered or the rule is removed by hand; verify with step 18 of the acceptance checklist.
+- The upstream offering bootstrap tool (`POST /api/offering/create`, no caller authentication) is **not** exposed through the tenant HTTPRoute by this deployer version: `deployment/assets.sh` leaves the route `offering-create` out of the rendered tenant values. The service stays internal and keeps its health probes. The deployer action `test-credentials` reaches it through a localhost port-forward with the operator's kubeconfig (it needs `create` on `pods/portforward` and `get` on `services` and `get` and `list` on `pods` in the `ocm-wstack` namespace). Installations deployed with an earlier version keep the rendered rule until the tenant chart is re-rendered or the rule is removed by hand; verify with step 18 of the acceptance checklist.
 - The `ocm-orce` pod may open TCP 443 to any public address (NetworkPolicy). Restrict this further if your egress firewall allows it.
 - The deployer needs a cluster-admin kubeconfig. Store it only in the deployer node, and rotate it after the handover.
-- Login is rate-limited and requires a same-origin `Origin`. Sessions use `SameSite=Strict` cookies. Every non-GET API call needs `X-CSRF-Token`, a present `Origin` must be the tenant origin, and state-changing routes also need an `X-Idempotency-Key`.
+- Login is rate-limited and requires a same-origin `Origin`. Sessions use `SameSite=Strict` cookies. Every non-GET API call except `POST /auth/login` and `POST /auth/csrf` needs `X-CSRF-Token`, a present `Origin` must be the tenant origin, and state-changing routes also need an `X-Idempotency-Key`.
 
 ## API reference and further docs
 

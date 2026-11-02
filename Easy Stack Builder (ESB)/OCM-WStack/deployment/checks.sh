@@ -581,8 +581,8 @@ test_credentials() {
     [[ $CONFIRM == 'CREATE TEST CREDENTIAL' ]] ||
         { fail CONFIRM 'Set confirm to CREATE TEST CREDENTIAL to run the native credential lifecycle test.'; return 1; }
     discover_storage_scope
-    start_tunnel credential-retrieval-service "$WORKDIR/retrieval-url"
-    start_tunnel storage-service "$WORKDIR/storage-url"
+    start_tunnel credential-retrieval-service "$WORKDIR/retrieval-url" || return 1
+    start_tunnel storage-service "$WORKDIR/storage-url" || return 1
     # The offering bootstrap tool has no public route; reach it only through a localhost port-forward.
     start_tunnel offering-dummy-credential-offering-bootstrap "$WORKDIR/offering-url" || return 1
     local random group retrieval storage offering request_id deadline found=false

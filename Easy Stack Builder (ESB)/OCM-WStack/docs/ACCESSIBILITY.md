@@ -42,7 +42,7 @@ Use the [checklist](#manual-test-checklist) and record the outcome in the [resul
 | 6 | Dialog focus trap ignores `summary` elements; the background is not made inert; focus can be lost after deletion or when the mobile menu closes | 2.4.3, 2.1.2 | Partial | `index.js:1865-1879`, `1117-1122`, `1853-1858`, `2525-2527` |
 | 7 | No skip link (landmarks exist) | 2.4.1 | Partial | `index.js:2461`, `2516-2517`, `2531` |
 | 8 | List views refresh every 10 s with no pause control | 2.2.2 | Partial | `index.js:2433-2444` |
-| 9 | Hard-coded English strings and one stale version string | 3.1.1 (context), i18n | Partial | `index.js:2523`, `2530` |
+| 9 | Hard-coded English strings | 3.1.1 (context), i18n | Partial | `index.js:2523` |
 
 ## WCAG 2.1 Level A and AA criteria
 
@@ -65,8 +65,8 @@ Use the [checklist](#manual-test-checklist) and record the outcome in the [resul
 | 1.4.11 Non-text contrast | AA | Fail (estimate) | Input, select and textarea borders `#cbd5e1` on white are 1.48:1 (`index.css:93`). Graph edges `#94a3b8` are 2.56:1 (`index.js:1081`). The focus ring `#a855f7` is 3.65–3.96:1 (pass, `index.css:85-88`). The checkbox accent is 5.17:1 (pass). |
 | 1.4.12 Text spacing | AA | Not verified | Needs a bookmarklet test; check fixed-height elements (`min-height` only, `index.css:37`, `99`). |
 | 1.4.13 Content on hover or focus | AA | Pass | Only native SVG `<title>` tooltips (`index.js:1084`, `1106`); no custom hover content. |
-| 2.1.1 Keyboard | A | Pass | All controls are native `button`, `input`, `select`, `textarea`, `a`, `summary`. The only click handler is in the `button()` helper (`1792-1799`). Filters use a real `<form>` with a submit button (`1445-1475`). |
-| 2.1.2 No keyboard trap | A | Partial | The dialog trap is intentional; Escape and Close leave it (`1865-1866`, `1890`). Because the trap list ignores `summary` (`1868`), Tab can leave the dialog when a `details` element comes last (`1117-1122`); that is a leak, not a trap. Native `confirm()` is used for destructive actions (`1772`, `1227`). |
+| 2.1.1 Keyboard | A | Partial (to confirm in a browser) | The two `summary` elements in the detail dialog (`1117`, `1121`) are probably not reachable by Tab, because the focus trap list (`1868`) leaves out `summary`. All other controls are native `button`, `input`, `select`, `textarea`, `a`, `summary`. The only click handler is in the `button()` helper (`1792-1799`). Filters use a real `<form>` with a submit button (`1445-1475`). |
+| 2.1.2 No keyboard trap | A | Partial | The dialog trap is intentional; Escape and Close leave it (`1865-1866`, `1890`). Because the trap list ignores `summary` (`1868`), Tab wraps to Close and skips the two `summary` elements after the last listed control (`1117`, `1121`); this makes them unreachable rather than trapping focus (to confirm in a browser). Native `confirm()` is used for destructive actions (`1772`, `1227`). |
 | 2.1.4 Character key shortcuts | A | Pass | No single-key shortcuts. |
 | 2.2.1 Timing adjustable | A | Pass | 24-hour absolute session; the 20-hour exception applies. When it expires, a 401 sends the user to the login page without warning (`1642-1646`). |
 | 2.2.2 Pause, stop, hide | A | Partial | Lists poll every 10 s when visible and idle (`2433-2444`); there is no pause control. A reviewer must decide whether this counts as auto-updating content that needs a control. |
@@ -83,14 +83,14 @@ Use the [checklist](#manual-test-checklist) and record the outcome in the [resul
 | 2.5.3 Label in name | A | Pass | Button names equal their visible text (`1792-1799`). The language select has `aria-label` "Language" and visible values EN/DE/FR (`2469-2480`). |
 | 2.5.4 Motion actuation | A | Pass | Not used. |
 | 3.1.1 Language of page | A | Pass | `<html lang="en">` (`index.html:2`); `document.documentElement.lang` is updated after the preferences load and on every language change (`index.js:2427`, `2474`). |
-| 3.1.2 Language of parts | AA | Pass | No mixed-language UI text, except user data, which cannot be marked, and the hard-coded strings listed under [Language and i18n](#language-and-i18n). |
+| 3.1.2 Language of parts | AA | Pass | No mixed-language UI text, except user data, which cannot be marked, and the hard-coded strings listed under [Language attributes and i18n](#language-attributes-and-i18n). |
 | 3.2.1 On focus | A | Pass | No focus handlers. |
 | 3.2.2 On input | A | Pass | Filters require submit (`1445-1475`). The language select changes only the UI language, which is a change of content, not of context (`2472-2478`). |
 | 3.2.3 Consistent navigation | AA | Pass | One navigation list in a fixed order, filtered by permission (`1594-1606`, `2525`). |
 | 3.2.4 Consistent identification | AA | Pass | Shared `button()`, `input()`, `select()`, `table()` helpers with locale keys. |
 | 3.3.1 Error identification | A | Partial | Errors appear in a `role="alert"` banner with a heading, a message, the HTTP status and a request ID (`2537-2546`). Login shows only "The request could not be completed." (`2509-2511`). No `aria-invalid` and no link from the error to the field. |
 | 3.3.2 Labels or instructions | A | Partial | All fields have visible labels, except the language select (`aria-label` only). The password rules are shown only after a failed attempt (`PASSWORD_POLICY`). Required claim fields are not marked (`1299-1300`). |
-| 3.3.3 Error suggestion | AA | Partial | Some codes have helpful text (for example `PASSWORD_POLICY`, `LOGIN_RATE_LIMITED`, `CSRF_INVALID`, `index.js:289-290`). Most backend codes (for example `VALIDATION_ERROR`, `RELATIONSHIP_HOST_NOT_ALLOWED`, `UNSUPPORTED_FORMAT`) fall back to the raw code (`1592`). |
+| 3.3.3 Error suggestion | AA | Partial | Some codes have helpful text (for example `PASSWORD_POLICY`, `LOGIN_RATE_LIMITED`, `CSRF_INVALID`, `index.js:286-290`). Most backend codes (for example `VALIDATION_ERROR`, `RELATIONSHIP_HOST_NOT_ALLOWED`, `UNSUPPORTED_FORMAT`) fall back to the raw code (`1592`). |
 | 3.3.4 Error prevention (legal, financial, data) | AA | Pass | Revoke, delete, relationship and issuance actions ask for confirmation (`1771-1772`); the clearing request confirms the endpoint (`1227`). |
 | 4.1.1 Parsing | A | Not verified | The DOM is generated by Vue. Field IDs come from label keys (`f-<label>`, `s-<label>`, `a-<label>`, `1802`, `1987`, `1815`); duplicate IDs are unlikely but must be checked with axe (`duplicate-id`). |
 | 4.1.2 Name, role, value | A | Partial | Native controls supply names and roles. The dialog has `role="dialog"`, `aria-modal`, `aria-labelledby` (`1880-1884`). Missing: `aria-current` on the active navigation button (`2525-2528`), `aria-expanded`/`aria-controls` on the menu button (`2465`), and expanded state on the "raw" toggle (`1937-1938`). |
@@ -171,7 +171,7 @@ Estimated ratios, see [method](#scope-and-method). Normal text needs 4.5:1; non-
 - Three locales, `en`, `de` and `fr`, each with **309 keys** and the same key set (`index.js:9-943`).
 - The language is chosen in the header, saved to the user's preferences (`2472-2478`) and restored after login (`2425-2427`).
 - `lang` on `<html>` is updated on both occasions (`2427`, `2474`). Before login, the page starts in English (`index.html:2`; default `locale: 'en'` at `1520`).
-- Dates use `toLocaleString(s.locale)` (`1972`, `1489`, `2558`).
+- Dates use `toLocaleString(s.locale)` (`1972`, `2558`) and `toLocaleDateString` (`1489`).
 - The lookup `t(k)` falls back to the key itself (`1592`). As a result:
   - 114 of the 130 error codes raised in `flows.json` are shown as raw codes in all languages;
   - claim names from credential types appear untranslated.

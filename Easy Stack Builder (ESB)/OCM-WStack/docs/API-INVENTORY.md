@@ -6,7 +6,7 @@ Module: FACIS Easy Stack Builder (ESB), `OCM-WStack`. Context: ESB ICAM Change R
 
 ## About this inventory
 
-- **Code basis.** The branch of the follow-up pull request, based on `main` commit `e5c7b44`. Compared with that commit, the branch changes version strings to `12.6.4`, including two hard-coded version strings in `flows.json`, and UI text; it changes no routes. Paths are relative to `Easy Stack Builder (ESB)/OCM-WStack/`.
+- **Code basis.** The branch of the follow-up pull request, based on `main` commit `e5c7b44`. Compared with that commit, the branch changes version strings to `12.6.4`, including two hard-coded version strings in `flows.json`, and UI text; no route of `/orce/ui-api/v1` changes. The deployer no longer renders the public offering test route (`deployment/assets.sh`). Paths are relative to `Easy Stack Builder (ESB)/OCM-WStack/`.
 - **How section 1 was derived.** `charts-runtime/files/flows.json` was parsed with `python -I -X utf8`: `http in` nodes, function nodes, tabs and wiring. The 57 `/orce/ui-api/v1` routes were cross-checked against the route table `definitions` in `flows.json › runtime` (id `ocm-library-28`).
   - Every `http in` route maps to a definition or to one of the 7 special-cased paths in `Runtime.handle`, and every definition has an `http in` node.
 - **NATS and links.** `flows.json` contains **no NATS nodes and no link nodes**. NATS is used through the `nats` npm client inside `flows.json › events`.
@@ -28,7 +28,7 @@ These rules apply to all routes in 1.3 unless the route says otherwise. They are
 | --- | --- |
 | Dispatch | `http in` node → per-tab service function (e.g. `Auth service`) → `ocmBridge.app.handle(req, res, "<Module>")`. If the runtime is not created yet: `503 COORDINATION_UNAVAILABLE`. |
 | Authentication | Cookie `__Secure-ocm_session` with exactly one value of 43 base64url characters. The session is looked up by SHA-256 hash in `ui_sessions`. The 24-hour absolute expiry is checked on every request. The user must be enabled and `authVersion` must match. Failure: `401 AUTHENTICATION_REQUIRED`. |
-| Origin | If an `Origin` header is present it must equal `{publicOrigin}`, else `403 ORIGIN_FORBIDDEN`. For non-GET requests `Origin` is **mandatory** (checked inside the CSRF check). If `Sec-Fetch-Site` is present it must be `same-origin`. |
+| Origin | If an `Origin` header is present it must equal `{publicOrigin}`, else `403 ORIGIN_FORBIDDEN`. For non-GET requests `Origin` is **mandatory** (checked inside the CSRF check). For non-GET requests, login, `/auth/csrf` and the Socket.IO handshake, a present `Sec-Fetch-Site` must be `same-origin` (`LocalAuth.sameOrigin`); GET routes do not check it. |
 | CSRF | Every **non-GET** route requires header `X-CSRF-Token`. The value is the token returned by `POST /auth/login` or `POST /auth/csrf`, i.e. HMAC-SHA256 over the session hash. Failure: `403 CSRF_INVALID`. |
 | Permission | Checked against the user's effective permissions (1.2). Failure: `403 PERMISSION_DENIED`. |
 | Password change gate | While `passwordChangeRequired` is set, every route except `GET /auth/me` returns `403 PASSWORD_CHANGE_REQUIRED`. The special auth routes, including `POST /auth/password`, are not affected. |
@@ -282,7 +282,7 @@ The "Pinned chart" column names the chart directory in `eclipse-xfsc/deployment`
 
 ### 2.3 NATS
 
-Server: `nats://nats.infrastructure.svc.cluster.local:4222` (`runtime-config.json › natsUrl`). The client name is `ocm-ui-runtime`, with unlimited reconnects at a 2 s interval. Credentials are used only if `natsUser` and `natsPassword` are configured; the deployer does not set them. All messages are CloudEvents 1.0 with `source: urn:xfsc:ocm-ui`.
+Server: `nats://nats.infrastructure.svc.cluster.local:4222` (`runtime-config.json › natsUrl`). The client name is `ocm-ui-runtime`, with unlimited reconnects at a 2 s interval. Credentials are used only if `natsUser` is configured (then with `natsPassword`); the deployer does not set them. All messages are CloudEvents 1.0 with `source: urn:xfsc:ocm-ui`.
 
 | Subject | Pattern | Message type (`type`) | Payload sent / checked | Used for | Responder |
 | --- | --- | --- | --- | --- | --- |

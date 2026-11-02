@@ -206,7 +206,8 @@ def tenant_values($defaults):
      openbao:{transit:{mountPath:("ocm-wstack/"+$c.tenantId)}},
      # The offering bootstrap tool (route "offering-create") accepts issuance requests without caller
      # authentication; its public route is never rendered. The service stays internal.
-     ocm_issuer:($issuer | map(select(.name != "didcomm" and .name != "offering-create"))),
+     ocm_issuer:($issuer | map(select(.name != "didcomm" and .name != "offering-create" and
+       .backend.name != "offering-dummy-credential-offering-bootstrap" and .path != "/test/offering/create"))),
      ocm_verifier:(($defaults.ocm_verifier | map(select(.name != "didcomm"))) +
        [$defaults.ocm_verifier[] | select(.path == "/api/verifier/presentation/proof/") |
          .name += "-compat" | .path="/api/presentation/proof"] +

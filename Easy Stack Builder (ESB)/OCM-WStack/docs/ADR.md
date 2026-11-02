@@ -6,7 +6,7 @@ Module: FACIS Easy Stack Builder (ESB), `OCM-WStack`. Context: ESB ICAM Change R
 
 ## How to read this document
 
-- **Code basis.** The branch of the follow-up pull request, based on `main` commit `e5c7b44` (the merge of pull request #7). Compared with that commit, the branch sets the version strings to `12.6.4` in `package.json`, `charts-runtime/Chart.yaml`, `charts-runtime/files/seed.sh`, `charts-runtime/files/flows.json` (two hard-coded runtime version strings, previously `12.5.11`), `charts-runtime/files/ui/index.js`, `deployment/cluster.sh` and `ocmwstack.html`, and makes the small corrections listed in the pull request description. It does not change the behaviour of the flows, the UI or the deployer.
+- **Code basis.** The branch of the follow-up pull request, based on `main` commit `e5c7b44` (the merge of pull request #7). Compared with that commit, the branch sets the version strings to `12.6.4` in `package.json`, `charts-runtime/Chart.yaml`, `charts-runtime/files/seed.sh`, `charts-runtime/files/flows.json` (two hard-coded runtime version strings, previously `12.5.11`), `charts-runtime/files/ui/index.js`, `deployment/cluster.sh` and `ocmwstack.html`, and makes the small corrections listed in the pull request description. It does not change the behaviour of the flows or the UI. The deployer changes in one respect: `deployment/assets.sh` no longer renders the public offering test route, and `deployment/checks.sh › test_credentials` reaches that service through a port-forward.
 - **Paths** are relative to the module directory `Easy Stack Builder (ESB)/OCM-WStack/`. Function nodes in `charts-runtime/files/flows.json` are cited as `flows.json › <node name>` (with node id where useful).
 - **External documents.** The CR01 change procedure form (29 April 2026) and the CR01 activity breakdown and timeline v5.0 (26 June 2026) were consulted for this document. They are not contained in this repository. Where an ADR cites them, it cites them as the agreement record; everything else in each ADR is taken from the code.
 - **Status.** Each ADR states what the code implements. ADR-002 cites the realization offer in CR01, which the principal accepted, as its agreement record and is marked *Accepted*. The other ADRs are marked **"Proposed – to be confirmed by the principal"**, because no written agreement on them is contained in this repository. A reviewer who holds such a record should change the status to *Accepted* and cite the record.
@@ -76,7 +76,7 @@ The module must provide an application backend and a web UI in front of the nati
 - Business rules sit in named function nodes and can be read in the ORCE editor. The `OCM initialization` tab note reads "Edit business rules in the named Function nodes". Persistent changes must still be made in `charts-runtime/files/flows.json` (see the negative consequences below).
 
 **Negative / risks**
-- About 200 KB of JavaScript lives as JSON-escaped strings inside `flows.json` (219,465 bytes in total). Code review, diffs, linting and static analysis are harder than for plain source files.
+- About 200 KB of JavaScript lives as JSON-escaped strings inside `flows.json` (217,545 bytes in total). Code review, diffs, linting and static analysis are harder than for plain source files.
 - The repository contains no unit tests for the function code. `test/bdd/` only exercises a live deployment.
 - Libraries depend on the order of the initialization chain and share state through the global context. A changed library takes effect only when the whole chain runs again: `Prepare shared services` closes the running `Runtime` and resets `ocmLibraries` before the libraries are reloaded.
 - `charts-runtime/files/seed.sh` copies the chart's `flows.json` over `/data/flows.json` on every pod start. Changes made in the deployed editor are therefore overwritten at the next restart or rollout unless they are also committed to the chart.
@@ -113,7 +113,7 @@ Implemented. **Proposed – to be confirmed by the principal.**
 - Components are written as render functions with `h()`. The file contains no `template:` options and no single-file components, and there is no bundler or transpiler.
 - **UI sources:**
   - `index.html` (16 lines);
-  - `index.js` (2,581 lines, about 114 KB, unminified, with English, German and French strings inline);
+  - `index.js` (2,581 lines, about 112 KB, unminified, with English, German and French strings inline);
   - `index.css`;
   - `facis-logo.svg`.
 - The Socket.IO client is loaded from uibuilder at `/orce/socket.io/socket.io.js`.
@@ -204,7 +204,7 @@ The ORCE base image is configurable (`runtimeImage`). It defaults to `ecofacis/x
 - Supply-chain exposure at install time is not covered by an integrity record (no `integrity` hashes, no SBOM).
 - Old releases accumulate under `/data/releases/` on the 3Gi default PVC. No pruning is implemented.
 - The guard depends on command-line tools that the ORCE base image happens to contain. This contract is implicit.
-- The seed ConfigMap currently holds about 356 KB of files (`flows.json` 219 KB, `index.js` 114 KB). Kubernetes limits a ConfigMap to 1 MiB, which bounds future growth of flows and UI.
+- The seed ConfigMap currently holds about 350 KB of files (`flows.json` 218 KB, `index.js` 112 KB). Kubernetes limits a ConfigMap to 1 MiB, which bounds future growth of flows and UI.
 
 **Mitigation options (not implemented)**
 1. Commit a lockfile (`package-lock.json` or `npm-shrinkwrap.json`) generated for the pinned direct versions. Ship it in `ocm-orce-seed`, switch `seed.sh` to `npm ci --omit=dev --ignore-scripts`, and include the lockfile in the release hash.
@@ -318,13 +318,13 @@ Implemented. **Proposed – to be confirmed by the principal.**
 
 **CSRF**
 - The token is `HMAC-SHA256(offerKey, "ocm-ui-csrf-v1:" + sessionHash)`, encoded as base64url and returned by login and `POST /auth/csrf`.
-- It is required as `X-CSRF-Token` on every non-GET API request, together with a matching `Origin` header (`LocalAuth.csrf`, `Runtime.handle`).
+- It is required as `X-CSRF-Token` on every non-GET API request except `POST /auth/login` and `POST /auth/csrf`, together with a matching `Origin` header (`LocalAuth.csrf`, `Runtime.handle`).
 - The Socket.IO handshake uses the same session, CSRF and origin checks and re-checks them every 5 seconds (`flows.json › Authenticate live UI connections`).
 
 **Authorization**
 - There are 13 atomic permissions and 5 system roles: `viewer`, `operator`, `issuer`, `auditor`, `administrator` (`flows.json › permissions`). Custom roles are possible.
 - The last role manager cannot be removed (`LAST_ROLE_MANAGER`).
-- While `passwordChangeRequired` is set, every route except `GET /auth/me` is rejected.
+- While `passwordChangeRequired` is set, every route except `GET /auth/me`, the password change, `/auth/csrf`, `/auth/logout` and the health routes is rejected.
 - Login, logout, password changes, denials and all mutations are written to `ui_audit_log`.
 
 **Editor and dashboards**
@@ -484,7 +484,7 @@ The UI backend calls the native services and does not re-implement them (`flows.
 
   These are stable only as long as the upstream pin is kept.
 - **Trust boundary is the network.** By default no `Authorization` header is sent to native services: `nativeToken` is not set by the deployer. Requests carry scope headers (`x-tenantid`, `x-groupid`, `x-group`, `x-namespace`, `x-origin`). Protection relies on NetworkPolicies and in-cluster reachability.
-- **Resilience.** Native calls use timeouts of 5 s for GET and 15 s for mutations, plus a per-service circuit breaker (3 consecutive failures of 5xx or transport type open the circuit for 30 s; `flows.json › http`, `Client.call`). Mutations are never retried automatically.
+- **Resilience.** Native calls use timeouts of 5 s for GET and 15 s for mutations, plus a per-service circuit breaker (3 consecutive failures of 5xx or transport type open the circuit for 30 s; `flows.json › adapters` and `flows.json › http`, `Client.call`). Mutations are never retried automatically.
 - **Version hints are comments only.** Code comments refer to specific native versions, but these are not enforced pins:
   - "Storage 1.2.5" (`storage-path`);
   - "Storage 1.3.0" (`adapters`, `records`);
